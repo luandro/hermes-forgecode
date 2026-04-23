@@ -38,7 +38,7 @@ result = computer(action="bash", command='forge -C /path/to/repo -p "Fix the fai
 
 Resume a conversation:
 ```python
-result = computer(action="bash", command='forge --conversation-id abc123 -p "Continue the auth module implementation"', workdir="/path/to/repo")
+result = computer(action="bash", command='forge --conversation-id abc123 -p "Continue the auth module implementation"', workdir="/path/to/repo")  # get IDs from: forge conversation list
 ```
 
 ### Mode 2: Interactive TUI via tmux
@@ -135,6 +135,10 @@ p2 = subprocess.Popen(['forge', '-p', 'Design REST API endpoints for users'], cw
 
 p1.wait(); p2.wait()
 
+# Note: parallel agents share the same API key and rate limit.
+# With >2 workers, expect 429 retries — tune FORGE_RETRY_MAX_ATTEMPTS accordingly.
+# Capture stderr separately: stderr=subprocess.PIPE or stderr=subprocess.STDOUT
+
 # Clean up
 subprocess.run(['git', 'worktree', 'remove', '/tmp/feat-auth'])
 subprocess.run(['git', 'worktree', 'remove', '/tmp/feat-api'])
@@ -174,6 +178,32 @@ FORGE_LOG=forge=debug        # Enable debug logging for troubleshooting
 
 - **[cli-reference.md](references/cli-reference.md)** — Full CLI flags, subcommands, conversation management.
 - **[agent-patterns.md](references/agent-patterns.md)** — Multi-agent orchestration, sage→muse→forge pipeline, parallel patterns.
+
+## Recommended Workflow (Plan-First)
+
+For non-trivial tasks, plan before implementing. This decouples strategic thinking from coding pressure and produces better architectural decisions.
+
+**1. Research with sage** — understand the codebase without risk:
+```python
+research = computer(action="bash", command='forge --agent sage -p "Map the auth flow from login to session expiry"', workdir="/path/to/repo")
+```
+
+**2. Plan with muse** — create a structured plan, then ask muse to critique its own gaps:
+```python
+plan = computer(action="bash", command='forge --agent muse -p "Design OAuth2 integration. Include scope, integration points, error handling, and edge cases. Then identify gaps or risks in your own plan."', workdir="/path/to/repo")
+# Review plans/plan.md before proceeding
+```
+
+**3. Implement with forge** — reference the plan, commit frequently:
+```python
+result = computer(action="bash", command='forge -p "Execute plans/plan.md. Commit after each logical unit of work."', workdir="/path/to/repo")
+```
+
+**Key principles:**
+- **Minimize agent switching** — each switch loses context and degrades cache performance. Batch all planning into one muse session, all implementation into one forge session.
+- **Self-critique the plan** — explicitly ask muse to find flaws in its own output before handing off to forge.
+- **Commit frequently** — forge should commit after each logical unit; makes review and rollback tractable.
+- **Treat forge output as junior dev code** — review diffs before merging; don't blindly trust completeness.
 
 ## Rules for Hermes Agents
 

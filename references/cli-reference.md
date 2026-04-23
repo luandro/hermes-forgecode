@@ -19,7 +19,7 @@
 
 ```bash
 forge conversation list                    # List all conversations
-forge conversation resume <id>             # Resume by ID
+forge conversation resume <id>             # Resume by ID (opens interactive TUI; for scripting use: forge --conversation-id <id> -p "...")
 forge conversation new                     # Start fresh conversation
 forge conversation dump <id>               # Dump conversation to JSON
 forge conversation compact <id>            # Compress conversation history
@@ -80,6 +80,21 @@ forge update                               # Update forge to latest version
 forge setup                                # Install ZSH plugin
 ```
 
+### Custom Commands
+
+```bash
+forge cmd list                             # List all custom commands
+forge cmd run <name>                       # Run a named custom command
+```
+
+### Data Processing
+
+```bash
+forge data                                 # Process JSONL data through LLM with schema-constrained tools
+```
+
+`forge data` is useful for batch agent orchestration with structured output — it streams JSONL records through the agent and produces structured results.
+
 ## ZSH Plugin (Interactive Shell Only)
 
 Once installed via `forge setup`, these shortcuts work at the ZSH prompt:
@@ -96,6 +111,16 @@ Once installed via `forge setup`, these shortcuts work at the ZSH prompt:
 | `:skill` | List available skills |
 
 **Note**: ZSH plugin does NOT work in non-interactive shells or scripts — use full `forge` commands instead.
+
+### forge zsh subcommands
+
+```bash
+forge zsh setup      # Install ZSH plugin
+forge zsh doctor     # Diagnose shell integration issues (run this first when troubleshooting)
+forge zsh plugin     # Manage plugin settings
+forge zsh theme      # Configure prompt theme
+forge zsh rprompt    # Configure right-side prompt
+```
 
 ## Custom Agents
 
@@ -131,10 +156,10 @@ forge --agent reviewer -p "Review the changes in src/auth/"
 
 Skills are reusable workflows the AI can invoke as tools.
 
-**Built-in skills:**
-- `create-skill` — scaffold a new custom skill
-- `execute-plan` — execute a plan file from `plans/`
-- `github-pr-description` — generate PR description from diff
+**Built-in skills** vary by version — list what's installed:
+```bash
+forge list skill
+```
 
 **Skill locations (highest precedence first):**
 1. `.forge/skills/<name>/SKILL.md` — project-local
@@ -142,9 +167,11 @@ Skills are reusable workflows the AI can invoke as tools.
 3. Built-in (embedded in binary)
 
 **Invoke a skill explicitly:**
+```bash
+forge -p "Generate a PR description using the github-pr-description skill"
 ```
-: generate a PR description using the github-pr-description skill
-```
+
+Note: The ZSH `: skill-name` shorthand only works in interactive shells.
 
 ## .forge.toml Configuration
 
@@ -164,6 +191,20 @@ custom_instructions = """               # Persistent instructions for all agents
 2. Use conventional commits.
 3. Run tests after changes.
 """
+```
+
+Custom commands are managed via `forge cmd`, not inline config. Use `forge cmd list` to see available commands.
+
+## Machine-Readable Output (--porcelain)
+
+Several subcommands support `--porcelain` for clean, parseable output without ANSI codes or decorations. Use this when parsing forge output programmatically:
+
+```bash
+forge list agent --porcelain
+forge list model --porcelain
+forge list skill --porcelain
+forge mcp list --porcelain
+forge provider list --porcelain
 ```
 
 ## MCP Configuration (.mcp.json)
