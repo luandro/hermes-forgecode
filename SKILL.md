@@ -142,25 +142,32 @@ subprocess.run(['git', 'worktree', 'remove', '/tmp/feat-api'])
 
 ## Configuration
 
-**`forge.yaml`** (project root or `~/.forge/forge.yaml`):
-```yaml
-model: "claude-3.7-sonnet"
-custom_rules: |
-  Always add error handling.
-  Use conventional commits.
-  Run tests after changes.
-max_tool_failure_per_turn: 3
-max_requests_per_turn: 50
+**`.forge.toml`** (project root or `~/forge/.forge.toml`):
+```toml
+[session]
+model = "claude-3.7-sonnet"
+
+[agent]
+custom_instructions = """
+Always add error handling.
+Use conventional commits.
+Run tests after changes.
+"""
+max_tool_failure_per_turn = 3
+max_requests_per_turn = 100
 ```
 
 **`AGENTS.md`** (project root): Persistent instructions injected into every agent session — use for project conventions, commit style, constraints.
 
 **Key environment variables:**
 ```bash
-FORGE_TOOL_TIMEOUT=300          # Max seconds per tool call (default: 60; increase for long builds)
-FORGE_HTTP_READ_TIMEOUT=900     # Timeout for long tasks (default 15min)
+FORGE_TOOL_TIMEOUT=300          # Max seconds per tool call (default: 300)
+FORGE_HTTP_READ_TIMEOUT=900     # Timeout for long tasks; increase for long implementations (e.g. 900 for large tasks)
 FORGE_RETRY_MAX_ATTEMPTS=3      # API retry count
 FORGE_TRACKER=false             # Disable telemetry
+FORGE_SESSION__MODEL_ID=haiku   # Override model (e.g. haiku, sonnet, gpt-4o)
+FORGE_SESSION__PROVIDER_ID=open_router  # Override provider (e.g. open_router, anthropic)
+FORGE_LOG=forge=debug        # Enable debug logging for troubleshooting
 ```
 
 ## Reference Files
@@ -174,7 +181,7 @@ FORGE_TRACKER=false             # Disable telemetry
 2. **Always set `workdir`** — forge operates relative to the current directory; wrong directory produces garbage.
 3. **Use `--agent sage`** for research — it is read-only and cannot modify files.
 4. **Use `--agent muse`** for planning — it writes to `plans/` without touching source code.
-5. **Set `FORGE_HTTP_READ_TIMEOUT`** for long implementations — default 15min is usually sufficient.
+5. **Set `FORGE_HTTP_READ_TIMEOUT`** for long implementations — increase for long implementations (e.g. 900 for large tasks).
 6. **Use `--sandbox`** for experimental changes — automatic isolated worktree + branch.
 7. **For parallel tasks**, use git worktrees and separate forge processes per worktree.
 8. **Use tmux only for multi-turn sessions** that genuinely require back-and-forth conversation.
@@ -189,4 +196,4 @@ FORGE_TRACKER=false             # Disable telemetry
 4. **Session resume** — `--conversation-id` resumes an existing conversation; omit to start fresh.
 5. **`--sandbox` creates a branch** — branch name is derived from the sandbox name; verify with `git branch`.
 6. **Rate limits** — forge respects API rate limits; long tasks may pause; tune with `FORGE_RETRY_MAX_ATTEMPTS`.
-7. **Model default** — forge uses the model in `forge.yaml` unless `--model` is passed on the CLI.
+7. **Model default** — forge uses the model in `.forge.toml` unless `FORGE_SESSION__MODEL_ID`/`FORGE_SESSION__PROVIDER_ID` env vars are set. There is no `--model` CLI flag.

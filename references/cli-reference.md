@@ -11,7 +11,6 @@
 | `--agent <AGENT>` | Specify agent ID for the session (`forge`, `sage`, `muse`, or custom) |
 | `-C, --directory <DIR>` | Change to this directory before starting |
 | `--sandbox <NAME>` | Create isolated git worktree + branch for experimentation |
-| `--model <MODEL>` | Override the default model for this session |
 | `--verbose` | Enable verbose logging |
 
 ## Subcommands
@@ -147,24 +146,24 @@ Skills are reusable workflows the AI can invoke as tools.
 : generate a PR description using the github-pr-description skill
 ```
 
-## forge.yaml Configuration
+## .forge.toml Configuration
 
-Full reference for `forge.yaml` (project root or `~/.forge/forge.yaml`):
+Full reference for `.forge.toml` (project root or `~/forge/.forge.toml`):
 
-```yaml
-model: "claude-3.7-sonnet"              # Default model
-temperature: 0.7                         # Response creativity (0.0-1.0)
-max_walker_depth: 3                      # Directory traversal depth
-max_tool_failure_per_turn: 3             # Failures before forcing turn completion
-max_requests_per_turn: 50               # Max LLM requests per turn (then prompts to continue)
-custom_rules: |                          # Persistent instructions for all agents
-  1. Always add error handling.
-  2. Use conventional commits.
-  3. Run tests after changes.
-commands:                                # CLI shortcuts
-  - name: "review"
-    description: "Review current changes"
-    prompt: "Review the staged changes for bugs, security issues, and style."
+```toml
+[session]
+model = "claude-3.7-sonnet"              # Default model
+temperature = 0.7                        # Response creativity (0.0-1.0)
+
+[agent]
+max_walker_depth = 3                     # Directory traversal depth
+max_tool_failure_per_turn = 3            # Failures before forcing turn completion
+max_requests_per_turn = 100             # Max LLM requests per turn (then prompts to continue)
+custom_instructions = """               # Persistent instructions for all agents
+1. Always add error handling.
+2. Use conventional commits.
+3. Run tests after changes.
+"""
 ```
 
 ## MCP Configuration (.mcp.json)
@@ -192,10 +191,12 @@ commands:                                # CLI shortcuts
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FORGE_TOOL_TIMEOUT` | 60 | Max seconds a tool runs before termination |
+| `FORGE_TOOL_TIMEOUT` | 300 | Max seconds a tool runs before termination |
 | `FORGE_HTTP_READ_TIMEOUT` | 900 | HTTP read timeout (15min — good for long tasks) |
 | `FORGE_RETRY_MAX_ATTEMPTS` | 3 | API retry count on transient errors |
-| `FORGE_MAX_REQUESTS_PER_TURN` | 50 | Max LLM requests per turn (mirrors yaml) |
+| `FORGE_MAX_REQUESTS_PER_TURN` | 100 | Max LLM requests per turn (mirrors .forge.toml) |
+| `FORGE_SESSION__MODEL_ID` | — | Override model for the session (e.g. `haiku`, `sonnet`). Maps to `[session] model` in `.forge.toml`. |
+| `FORGE_SESSION__PROVIDER_ID` | — | Override provider (e.g. `open_router`, `anthropic`). The `SECTION__KEY` double-underscore maps to `[SECTION]` + `key` in `.forge.toml`. |
 | `FORGE_WORKSPACE_SERVER_URL` | — | Self-hosted semantic search server URL |
 | `FORGE_TRACKER` | true | Set to `false` to disable telemetry |
-| `FORGE_LOG` | — | Log verbosity (e.g., `forge=info`, `forge=debug`) |
+| `FORGE_LOG` | — | Log verbosity (e.g., `forge=info`, `forge=debug`). First thing to set when troubleshooting. |
