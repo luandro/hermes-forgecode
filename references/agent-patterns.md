@@ -82,6 +82,11 @@ for branch, _ in tasks:
     subprocess.run(['git', 'worktree', 'add', wt_path, '-b', branch], cwd=repo)
     worktrees.append(wt_path)
 
+# WARNING: Parallel forge agents share the same API key and rate limit.
+# With >2 workers, expect 429 retries — tune with FORGE_RETRY_MAX_ATTEMPTS.
+# Always log stderr (stderr=subprocess.STDOUT) — lost stderr hides failures.
+# Use timeout= on wait() to prevent zombie worktrees if a task hangs.
+
 # Launch parallel forge agents
 processes = []
 for (branch, prompt), wt_path in zip(tasks, worktrees):
@@ -94,10 +99,14 @@ for (branch, prompt), wt_path in zip(tasks, worktrees):
     processes.append((branch, p, wt_path))
     print(f"Started: {branch}")
 
-# Wait for all to complete
+# Wait for all to complete (with timeout to avoid hanging indefinitely)
 for branch, p, wt_path in processes:
-    returncode = p.wait()
-    print(f"Completed: {branch} (exit={returncode})")
+    try:
+        returncode = p.wait(timeout=1800)  # 30 min max per task
+        print(f"Completed: {branch} (exit={returncode})")
+    except subprocess.TimeoutExpired:
+        p.kill()
+        print(f"Timed out: {branch} — manual review needed")
 
 # Review and clean up
 for _, _, wt_path in processes:
@@ -113,25 +122,34 @@ Use sage to decompose a complex task, then dispatch parallel forge workers.
 ```python
 import subprocess
 import json
+import os
 
 repo = "/path/to/repo"
 
-# Orchestrator: decompose task into subtasks
-decomposition = subprocess.run(
+# IMPORTANT: Do not parse forge's stdout for structured data.
+# Forge one-shot output mixes reasoning traces, ANSI codes, and chat text —
+# stdout parsing is brittle and breaks across versions.
+# Instead: instruct forge to write structured output to a file, then read that file.
+
+os.makedirs(f"{repo}/plans", exist_ok=True)
+
+# Orchestrator: decompose task into subtasks — write output to a file
+subprocess.run(
     ['forge', '--agent', 'sage', '-p',
      'Analyze the codebase and decompose this task into 3-5 independent subtasks: '
      '"Migrate from REST to GraphQL". '
-     'Return JSON: {"subtasks": [{"id": "...", "description": "...", "files": [...]}]}'],
-    cwd=repo, capture_output=True, text=True
+     'Write your result as JSON to plans/subtasks.json with format: '
+     '{"subtasks": [{"id": "...", "description": "...", "files": [...]}]}'],
+    cwd=repo
 )
 
-# Parse subtasks — try JSON code fence first, fall back to brace scan
-import re
-output = decomposition.stdout
-match = re.search(r'```json\s*(\{.*?\})\s*```', output, re.DOTALL)
-block = match.group(1) if match else output[output.find('{'):output.rfind('}')+1]
-subtasks_data = json.loads(block)
+# Read structured output from file — reliable, no stdout parsing needed
+with open(f"{repo}/plans/subtasks.json") as f:
+    subtasks_data = json.load(f)
 subtasks = subtasks_data['subtasks']
+
+# WARNING: Parallel forge agents share the same API key and rate limit.
+# With >2 workers, expect 429 retries — tune with FORGE_RETRY_MAX_ATTEMPTS.
 
 # Dispatch workers in parallel
 processes = []
@@ -149,7 +167,12 @@ for task in subtasks:
 
 # Collect results
 for task_id, p, wt_path in processes:
-    p.wait()
+    try:
+        p.wait(timeout=1800)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        print(f"Timed out: {task_id}")
+        continue
     with open(f"/tmp/forge-log-{task_id}.txt") as f:
         print(f"=== {task_id} ===")
         print(f.read()[-2000:])  # Last 2000 chars
@@ -167,6 +190,7 @@ Use forge to implement, then sage to validate, repeating until criteria are met.
 
 ```python
 import subprocess
+import json
 
 repo = "/path/to/repo"
 max_iterations = 3
@@ -180,19 +204,18 @@ for i in range(max_iterations):
         cwd=repo, capture_output=True, text=True
     )
     
-    # Validate (executes tests, does not modify source code)
-    validation = subprocess.run(
-        ['forge', '-p',
-         'Run the test suite without modifying source files, then report: '
-         '(1) pass/fail counts, (2) any remaining failures, '
-         '(3) whether the implementation looks correct. '
-         'Output JSON: {"passed": N, "failed": N, "issues": [...], "done": true/false}'],
-        cwd=repo, capture_output=True, text=True
+    # Validate with sage (read-only — cannot accidentally modify source files)
+    subprocess.run(
+        ['forge', '--agent', 'sage', '-p',
+         'Run the test suite and report results. Do not modify any source files. '
+         'Write results to plans/validation.json: '
+         '{"passed": N, "failed": N, "issues": [...], "done": true/false}'],
+        cwd=repo
     )
-    
-    import re
-    output = validation.stdout
-    if re.search(r'"done"\s*:\s*true', output):
+
+    with open(f"{repo}/plans/validation.json") as f:
+        report = json.load(f)
+    if report.get("done"):
         print("All tests passing. Done.")
         break
     
