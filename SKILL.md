@@ -8,6 +8,7 @@ metadata:
   version: "1.0.0"
   tags: [Coding-Agent, Forge, Forgecode, Code-Review, Refactoring, Multi-Agent, TailCallHQ, Autonomous]
   related_skills: [claude-code, codex, hermes-agent, opencode]
+allowed-tools: Bash(forge:*) Bash(tmux:*) Bash(git:*) Bash(python3:*) Read Write
 ---
 
 # Forge (Forgecode) Agent
@@ -118,33 +119,24 @@ result = computer(action="bash", command='forge --sandbox experiment-refactor -p
 
 ## Parallel Work with Git Worktrees
 
-Run multiple forge agents on independent tasks simultaneously:
+Run multiple forge agents on independent tasks simultaneously using git worktrees. Each agent gets an isolated branch and working directory.
+
+Load [agent-patterns.md](references/agent-patterns.md) (Pattern 2) for the full parallel workers pattern with timeout handling and cleanup.
 
 ```python
 import subprocess
 
-# Create worktrees
 subprocess.run(['git', 'worktree', 'add', '/tmp/feat-auth', '-b', 'feat/auth'], cwd='/repo')
-subprocess.run(['git', 'worktree', 'add', '/tmp/feat-api', '-b', 'feat/api'], cwd='/repo')
-
-# Launch parallel agents (non-blocking)
 p1 = subprocess.Popen(['forge', '-p', 'Implement OAuth2 authentication'], cwd='/tmp/feat-auth')
-p2 = subprocess.Popen(['forge', '-p', 'Design REST API endpoints for users'], cwd='/tmp/feat-api')
-
-p1.wait(); p2.wait()
-
-# Note: parallel agents share the same API key and rate limit.
-# With >2 workers, expect 429 retries — tune FORGE_RETRY_MAX_ATTEMPTS accordingly.
-# Capture stderr separately: stderr=subprocess.PIPE or stderr=subprocess.STDOUT
-
-# Clean up
+p1.wait()
 subprocess.run(['git', 'worktree', 'remove', '/tmp/feat-auth'])
-subprocess.run(['git', 'worktree', 'remove', '/tmp/feat-api'])
 ```
+
+**Note**: Parallel agents share the same API key and rate limit. With >2 workers, expect 429 retries -- tune `FORGE_RETRY_MAX_ATTEMPTS` accordingly.
 
 ## Configuration
 
-**`.forge.toml`** (project root or `~/forge/.forge.toml`):
+**`.forge.toml`** (project root or `~/forge/.forge.toml`) -- set default model and agent instructions:
 ```toml
 [session]
 model = "claude-3.7-sonnet"
@@ -155,27 +147,23 @@ Always add error handling.
 Use conventional commits.
 Run tests after changes.
 """
-max_tool_failure_per_turn = 3
-max_requests_per_turn = 100
 ```
 
-**`AGENTS.md`** (project root): Persistent instructions injected into every agent session — use for project conventions, commit style, constraints.
+**`AGENTS.md`** (project root): Persistent instructions injected into every agent session -- use for project conventions, commit style, constraints.
 
-**Key environment variables:**
+**Key env vars** (load [cli-reference.md](references/cli-reference.md) for the full list with defaults):
 ```bash
-FORGE_TOOL_TIMEOUT=300          # Max seconds per tool call (default: 300)
-FORGE_HTTP_READ_TIMEOUT=900     # Timeout for long tasks; increase for long implementations (e.g. 900 for large tasks)
-FORGE_RETRY_MAX_ATTEMPTS=3      # API retry count
-FORGE_TRACKER=false             # Disable telemetry
-FORGE_SESSION__MODEL_ID=haiku   # Override model (e.g. haiku, sonnet, gpt-4o)
-FORGE_SESSION__PROVIDER_ID=open_router  # Override provider (e.g. open_router, anthropic)
-FORGE_LOG=forge=debug        # Enable debug logging for troubleshooting
+FORGE_HTTP_READ_TIMEOUT=900     # Increase for long implementations
+FORGE_SESSION__MODEL_ID=haiku   # Override model (no --model CLI flag exists)
+FORGE_LOG=forge=debug           # First thing to set when troubleshooting
 ```
 
 ## Reference Files
 
-- **[cli-reference.md](references/cli-reference.md)** — Full CLI flags, subcommands, conversation management.
-- **[agent-patterns.md](references/agent-patterns.md)** — Multi-agent orchestration, sage→muse→forge pipeline, parallel patterns.
+Load these on demand -- do not read them unless the task calls for them:
+
+- **[cli-reference.md](references/cli-reference.md)** -- Load when you need full CLI flags, subcommands, conversation management, env var details, or MCP configuration.
+- **[agent-patterns.md](references/agent-patterns.md)** -- Load when orchestrating multi-agent workflows (sage->muse->forge pipeline, parallel workers, validation loops, staged reviews).
 
 ## Recommended Workflow (Plan-First)
 
