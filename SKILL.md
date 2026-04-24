@@ -1,18 +1,18 @@
 ---
 name: hermes-forgecode
-description: "A specialized skill for delegating coding tasks to the Forge (Forgecode) CLI agent. Use when you need to build features, fix bugs, or perform architecture research using a multi-agent pipeline (sage, muse, forge) within a terminal environment supporting 300+ LLMs."
+description: "Delegate coding tasks to Forge (Forgecode) CLI agent. Use when you need to build features, fix bugs, refactor code, perform code reviews, or do architecture research. Triggers: forge, forgecode, coding agent, multi-agent pipeline, sage, muse. Requires forge CLI installed."
+license: MIT
+compatibility: "Requires forge CLI (curl -fsSL https://forgecode.dev/cli | sh). Designed for hermes-agent; compatible with any agent skills implementation. Optional: tmux for interactive sessions, git for worktree patterns."
+metadata:
+  author: luandro
+  version: "1.0.0"
+  tags: [Coding-Agent, Forge, Forgecode, Code-Review, Refactoring, Multi-Agent, TailCallHQ, Autonomous]
+  related_skills: [claude-code, codex, hermes-agent, opencode]
 ---
 
 # Forge (Forgecode) Agent
 
 Forge is an open-source terminal AI coding environment. It reads files, writes patches, executes shell commands, runs tests, and performs semantic code search.
-
-## Metadata
-
-- **License**: MIT
-- **Compatibility**: Requires forge CLI (`curl -fsSL https://forgecode.dev/cli | sh`). Designed for hermes-agent; compatible with any agent skills implementation. Optional: tmux for interactive sessions, git for worktree patterns.
-- **Tags**: Coding-Agent, Forge, Forgecode, Code-Review, Refactoring, Multi-Agent, TailCallHQ, Autonomous
-- **Related Skills**: claude-code, codex, hermes-agent, opencode
 
 ## Execution Modes
 
