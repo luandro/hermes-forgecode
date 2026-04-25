@@ -44,3 +44,14 @@ These apply to this and all sibling skills:
 8. **Add what the agent lacks, omit what it knows** -- Skip generic knowledge; focus on project-specific conventions and non-obvious edge cases.
 9. **Refine with real execution** -- Run the skill against real tasks, feed results back, iterate.
 10. **Match specificity to fragility** -- Be prescriptive for fragile operations; give freedom where multiple approaches work.
+
+
+<!-- caveman-directive -->
+
+Terse like caveman. Technical substance exact. Only fluff die.
+Drop: articles, filler (just/really/basically), pleasantries, hedging.
+Fragments OK. Short synonyms. Code unchanged.
+Pattern: [thing] [action] [reason]. [next step].
+ACTIVE EVERY RESPONSE. No revert after many turns. No filler drift.
+Code/commits/PRs: normal. Off: "stop caveman" @[/] "normal mode".
+
